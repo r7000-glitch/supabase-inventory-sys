@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inventory System - CF Outsourcing Solutions</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal show">
+    <div class="modal-content">
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username" autocomplete="off" />
+      <input type="password" id="password" placeholder="Password" autocomplete="off" />
+      <div style="display:flex; gap:8px;">
+        <button id="loginBtn">Login</button>
+        <button id="demoBtn" title="Fill demo credentials">Demo</button>
+      </div>
+      <p style="font-size:13px;color:#ddd;margin-top:8px;">
+        Use <strong>user/user</strong>, or <strong>viewer/viewer</strong>.
+      </p>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div id="mainContent">
+    <header class="topbar">
+      <h1>Inventory System - CF Outsourcing Solutions</h1>
+      <div id="roleIndicator" class="role-indicator">Not logged in</div>
+    </header>
+
+    <div class="controls">
+      <div class="filters">
+        <select id="filterStatus">
+          <option value="">All Status</option>
+          <option value="Available">Available</option>
+          <option value="In Use">In Use</option>
+          <option value="Defective">Defective</option>
+          <option value="Deployed Available">Deployed Available</option>
+        </select>
+        <select id="filterDate">
+          <option value="">Sort by Date</option>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+        </select>
+      </div>
+
+      <input type="text" id="search" placeholder="Search inventory..." />
+
+      <div class="actions">
+        <button id="deleteBtn">Delete</button>
+        <button id="importBtn">Import</button>
+        <button id="exportBtn">Export</button>
+        <button id="addAssetBtn">Add Asset</button>
+        <button id="reportBtn">Generate Report</button>
+        <button id="logoutBtn">Logout</button>
+        <input type="file" id="importFile" accept=".csv" style="display:none;" />
+      </div>
+    </div>
+
+    <div class="counters">
+      <span id="countAvailable">Available: 0</span>
+      <span id="countInUse">In Use: 0</span>
+      <span id="countDefective">Defective: 0</span>
+      <span id="countDeployed">Deployed Available: 0</span>
+    </div>
+
+    <table id="inventoryTable">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selectAll" title="Select all"></th>
+          <th>Asset Tag</th>
+          <th>Asset Name</th>
+          <th>Brand/Model</th>
+          <th>Serial No.</th>
+          <th>Status</th>
+          <th>Location</th>
+          <th>Station No.</th>
+          <th>Warranty</th>
+          <th>Vendor</th>
+          <th>Date Purchased</th>
+          <th>Date Added/Updated</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- ADD ASSET MODAL -->
+  <div id="addModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeAdd">&times;</span>
+      <h2>Add Asset</h2>
+      <input type="text" id="add_tag" placeholder="Asset Tag" />
+      <input type="text" id="add_assetName" placeholder="Asset Name" />
+      <input type="text" id="add_assetType" placeholder="Asset Type" />
+      <input type="text" id="add_serial" placeholder="Serial Number" />
+      <select id="add_status">
+        <option value="">-- Select Status --</option>
+        <option value="Available">Available</option>
+        <option value="In Use">In Use</option>
+        <option value="Defective">Defective</option>
+        <option value="Deployed Available">Deployed Available</option>
+      </select>
+      <input type="text" id="add_location" placeholder="Location" />
+      <input type="text" id="add_station" placeholder="Station No." />
+      <input type="text" id="add_warranty" placeholder="Warranty" />
+      <input type="text" id="add_vendor" placeholder="Vendor" />
+      <input type="date" id="add_datePurchased" placeholder="Date Purchased" />
+      <input type="text" id="add_notes" placeholder="Remarks" />
+      <button id="addSaveBtn">Save</button>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
