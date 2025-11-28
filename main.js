@@ -473,5 +473,4 @@ if (currentUser) {
   roleIndicator.textContent = `Logged in as ${currentUser.username} (${currentUser.role})`;
   loadAssets();
 }
-}, AUTO_REFRESH_INTERVAL);
 
