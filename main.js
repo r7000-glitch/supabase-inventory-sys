@@ -195,6 +195,26 @@ document.querySelector("#inventoryTable tbody").addEventListener("keydown", (e) 
     e.target.blur();
   }
 });
+// --- Inline Editing ---
+function applyEditableState() {
+  const isViewer = currentUser && currentUser.role === "viewer";
+  document.querySelectorAll("#inventoryTable tbody td.editable").forEach(td => {
+    if (isViewer) {
+      td.removeAttribute("contenteditable");
+      td.classList.remove("editable-enabled");
+    } else {
+      td.setAttribute("contenteditable", "true");
+      td.classList.add("editable-enabled");
+    }
+  });
+}
+
+document.querySelector("#inventoryTable tbody").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target && e.target.matches("td[contenteditable='true']")) {
+    e.preventDefault();
+    e.target.blur();
+  }
+});
 
 document.querySelector("#inventoryTable tbody").addEventListener("focusout", async (e) => {
   const cell = e.target;
@@ -213,26 +233,6 @@ document.querySelector("#inventoryTable tbody").addEventListener("focusout", asy
     return;
   }
 
-
-  // Update in Supabase (without changing date to prevent re-sorting)
-  await updateAsset(id, { [col]: newValue });
-
-  // Update local array without re-fetching (preserves row order)
-  const asset = assets.find(a => a.id === id);
-  if (asset) {
-    asset[col] = newValue;
-  }
-
-  // Re-render status badge if status was changed
-  if (col === "status") {
-    const statusCell = row.querySelector("[data-col='status']");
-    if (statusCell) {
-      const statusClass = statusClassMap[newValue] || "";
-      statusCell.innerHTML = `<span class="status ${statusClass}">${escapeHtml(newValue)}</span>`;
-    }
-    updateCounters();
-  }
-});
 
 // --- Select all ---
 selectAllCheckbox.addEventListener("change", function () {
