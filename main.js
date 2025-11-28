@@ -175,27 +175,6 @@ function renderTable() {
   updateCounters();
 }
 
-// --- Inline Editing ---
-function applyEditableState() {
-  const isViewer = currentUser && currentUser.role === "viewer";
-  document.querySelectorAll("#inventoryTable tbody td.editable").forEach(td => {
-    if (isViewer) {
-      td.removeAttribute("contenteditable");
-      td.classList.remove("editable-enabled");
-    } else {
-      td.setAttribute("contenteditable", "true");
-      td.classList.add("editable-enabled");
-    }
-  });
-}
-
-document.querySelector("#inventoryTable tbody").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && e.target && e.target.matches("td[contenteditable='true']")) {
-    e.preventDefault();
-    e.target.blur();
-  }
-});
-
 document.querySelector("#inventoryTable tbody").addEventListener("focusout", async (e) => {
   const cell = e.target;
   if (!cell || !cell.matches("td")) return;
@@ -204,14 +183,60 @@ document.querySelector("#inventoryTable tbody").addEventListener("focusout", asy
   if (!row) return;
   const id = row.dataset.id;
   if (!id) return;
-  if (!col || !["tag", "assetName", "assetType", "serial", "status", "location", "station", "warranty", "vendor", "datePurchased", "notes"].includes(col)) return;
+  if (!col || !["tag", "assetName", "assetType", "serial", "status", "location", "station", "warranty", "vendor", "datePurchased", "date", "notes"].includes(col)) return;
 
-  const newValue = cell.textContent.trim();
+  let newValue = cell.textContent.trim();
+
+  // --- Required fields check ---
   if ((col === "tag" || col === "serial") && !newValue) {
     alert("Asset Tag and Serial cannot be empty.");
     renderTable();
     return;
   }
+
+  // --- Date validation for "Date Added" column ---
+  if (col === "date") {
+    if (newValue) {
+      const parsed = Date.parse(newValue);
+      if (isNaN(parsed)) {
+        alert("Invalid date format. Please enter a valid date.");
+        renderTable(); // revert to previous value
+        return;
+      } else {
+        newValue = new Date(parsed).toISOString(); // convert to ISO format
+      }
+    } else {
+      // If empty, fill with current timestamp
+      newValue = new Date().toISOString();
+    }
+  }
+
+  // --- Update in Supabase ---
+  await updateAsset(id, { [col]: newValue });
+
+  // --- Update local array without re-fetching ---
+  const asset = assets.find(a => a.id === id);
+  if (asset) asset[col] = newValue;
+
+  // --- Re-render status badge if status changed ---
+  if (col === "status") {
+    const statusCell = row.querySelector("[data-col='status']");
+    if (statusCell) {
+      const statusClass = statusClassMap[newValue] || "";
+      statusCell.innerHTML = `<span class="status ${statusClass}">${escapeHtml(newValue)}</span>`;
+    }
+    updateCounters();
+  }
+
+  // --- Re-render date cell display (optional human-friendly format) ---
+  if (col === "date") {
+    const dateCell = row.querySelector("[data-col='date']");
+    if (dateCell) {
+      const displayDate = new Date(newValue).toLocaleString();
+      dateCell.textContent = displayDate;
+    }
+  }
+});
 
   // Update in Supabase (without changing date to prevent re-sorting)
   await updateAsset(id, { [col]: newValue });
