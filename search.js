@@ -52,3 +52,8 @@ export async function searchAssets(searchTerm = "", statusFilter = "", dateSort 
 
   return { data, total: count };
 }
+
+import { searchAssets } from "./search.js";
+
+// remove the bottom `export async function searchAssets(...)`
+
