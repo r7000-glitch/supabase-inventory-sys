@@ -5,33 +5,49 @@ import { config } from "./config.js";
 // --- Supabase setup ---
 export const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_KEY);
 
-// --- Fetch assets ---
+// --- Fetch assets with server-side search, filter, and sort ---
 export async function fetchAssets(search = "", statusFilter = "", dateSort = "") {
-  const { data, error } = await supabase.from("assets").select("*");
+  let query = supabase.from("assets").select("*");
+
+  // --- Status filter ---
+  if (statusFilter) {
+    query = query.eq("status", statusFilter);
+  }
+
+  // --- Search across multiple columns ---
+  if (search) {
+    const q = `%${search}%`;
+    query = query.or(`
+      tag.ilike.${q},
+      assetName.ilike.${q},
+      assetType.ilike.${q},
+      serial.ilike.${q},
+      status.ilike.${q},
+      location.ilike.${q},
+      station.ilike.${q},
+      warranty.ilike.${q},
+      vendor.ilike.${q},
+      datePurchased.ilike.${q},
+      date.ilike.${q},
+      notes.ilike.${q}
+    `);
+  }
+
+  // --- Sorting ---
+  if (dateSort === "newest") {
+    query = query.order("date", { ascending: false });
+  } else if (dateSort === "oldest") {
+    query = query.order("date", { ascending: true });
+  }
+
+  const { data, error } = await query;
+
   if (error) {
     alert("Error fetching assets: " + error.message);
     return [];
   }
 
-  let filtered = data.map(a => ({ ...a }));
-
-  if (statusFilter) {
-    filtered = filtered.filter(a => a.status === statusFilter);
-  }
-  if (dateSort === "newest") {
-    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }
-  if (dateSort === "oldest") {
-    filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
-  }
-  if (search) {
-    const q = search.toLowerCase();
-    filtered = filtered.filter(a =>
-      `${a.tag} ${a.assetName} ${a.assetType} ${a.serial} ${a.status} ${a.location} ${a.station} ${a.warranty} ${a.vendor} ${a.datePurchased} ${a.date} ${a.notes}`.toLowerCase().includes(q)
-    );
-  }
-
-  return filtered;
+  return data;
 }
 
 // --- Add asset ---
