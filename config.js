@@ -7,7 +7,7 @@ export const config = {
 
   // User accounts
   users: [
-    { username: "admin", password: "@dmin321", role: "admin" },
+    { username: "admin", password: "@dmin2026", role: "admin" },
     { username: "user", password: "user", role: "user" },
     { username: "viewer", password: "viewer", role: "viewer" }
   ]
