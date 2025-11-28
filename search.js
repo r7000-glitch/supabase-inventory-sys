@@ -1,59 +1,31 @@
-import { supabase } from "./supabase.js";
+// --- Realtime.js for inventory system ---
 
-/**
- * Live search assets from Supabase
- * @param {string} searchTerm - the search string
- * @param {string} statusFilter - optional status filter
- * @param {string} dateSort - "newest" or "oldest"
- * @param {number} page - page number for pagination (default 1)
- * @param {number} pageSize - items per page (default 50)
- * @returns {Promise<{data: Array, total: number}>}
- */
-export async function searchAssets(searchTerm = "", statusFilter = "", dateSort = "", page = 1, pageSize = 50) {
-  let query = supabase.from("assets").select("*", { count: "exact" });
+// --- Supabase client ---
+const supabase = supabase.createClient(
+  'https://iwwopytnacebtffzcnmq.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d29weXRuYWNlYnRmZnpjbm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNTY5OTUsImV4cCI6MjA3OTgzMjk5NX0.kPBBZaw-vfxBkYfYPJOIQFUU3q2vuaIAmfXlAEI-NEM'
+);
 
-  // Status filter
-  if (statusFilter) query = query.eq("status", statusFilter);
-
-  // Search across multiple columns
-  if (searchTerm) {
-    const q = `%${searchTerm}%`;
-    query = query.or(`
-      tag.ilike.${q},
-      assetName.ilike.${q},
-      assetType.ilike.${q},
-      serial.ilike.${q},
-      status.ilike.${q},
-      location.ilike.${q},
-      station.ilike.${q},
-      warranty.ilike.${q},
-      vendor.ilike.${q},
-      datePurchased.ilike.${q},
-      date.ilike.${q},
-      notes.ilike.${q}
-    `);
-  }
-
-  // Sorting
-  if (dateSort === "newest") query = query.order("date", { ascending: false });
-  if (dateSort === "oldest") query = query.order("date", { ascending: true });
-
-  // Pagination
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    console.error("Search error:", error);
-    return { data: [], total: 0 };
-  }
-
-  return { data, total: count };
+// --- Ensure loadAssets function exists ---
+if (typeof loadAssets !== "function") {
+  console.error("loadAssets() function not found. Please make sure this script is loaded after main.js.");
 }
 
-import { searchAssets } from "./search.js";
+// --- Real-time subscription ---
+supabase
+  .channel('public:inventory')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'inventory' },
+    payload => {
+      console.log('Realtime update received:', payload);
 
-// remove the bottom `export async function searchAssets(...)`
+      // Refresh assets table
+      if (typeof loadAssets === "function") {
+        loadAssets();
+      }
+    }
+  )
+  .subscribe();
 
+// --- Search input is already handled in main.js via loadAssets() ---
