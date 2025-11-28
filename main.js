@@ -1,6 +1,5 @@
 import { fetchAssets, addAsset, updateAsset, deleteSelected } from "./supabase.js";
 import { config } from "./config.js";
-import { searchAssets } from "./search.js";
 
 // --- Users & roles (from config) ---
 const users = config.users;
