@@ -79,3 +79,46 @@ export async function deleteSelected(ids) {
   }
   return true;
 }
+
+ // --- Status filter ---
+  if (statusFilter) {
+    query = query.eq("status", statusFilter);
+  }
+
+  // --- Search across multiple columns ---
+  if (search) {
+    const q = `%${search}%`;
+    query = query.or(`
+      tag.ilike.${q},
+      assetName.ilike.${q},
+      assetType.ilike.${q},
+      serial.ilike.${q},
+      status.ilike.${q},
+      location.ilike.${q},
+      station.ilike.${q},
+      warranty.ilike.${q},
+      vendor.ilike.${q},
+      datePurchased.ilike.${q},
+      date.ilike.${q},
+      notes.ilike.${q}
+    `);
+  }
+
+  // --- Sorting ---
+  if (dateSort === "newest") query = query.order("date", { ascending: false });
+  if (dateSort === "oldest") query = query.order("date", { ascending: true });
+
+  // --- Pagination ---
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    alert("Error fetching assets: " + error.message);
+    return { data: [], total: 0 };
+  }
+
+  return { data, total: count }; // return data and total count
+}
