@@ -54,13 +54,13 @@ tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); fon
   border-radius: var(--radius);
   font-weight: bold;
   font-size: 0.85em;
-  color: white;
+  color: light gray;
   display: inline-block;
 }
 
-.status.in-use { background-color: blue; }
+.status.in-use { background-color: red; }
 .status.available { background-color: green; }
-.status.defective { background-color: red; }
+.status.defective { background-color: gray; }
 .status.deployed { background-color: yellow; color: black; } /* yellow needs dark text */
 
 /* --- Loading Overlay --- */
