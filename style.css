@@ -39,6 +39,13 @@ button:hover { background: var(--accent-teal); color: white; border-color: var(-
 table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: var(--radius); }
 thead th { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-light); background: var(--background-alt); }
 tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); font-size: 14px; }
+table td, table th {
+  border-right: 1px solid #e0e0e0;
+}
+table td:last-child, table th:last-child {
+  border-right: none;
+}
+
 
 .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 999; opacity: 0; transition: opacity 250ms ease; }
 .modal.show { display: flex !important; opacity: 1; }
