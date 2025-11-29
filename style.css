@@ -42,11 +42,11 @@ table {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden; /* ensures rounded corners apply correctly */
+  text-align: center; /* center all table content */
 }
 
 /* Header */
 thead th {
-  text-align: left;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
@@ -55,6 +55,8 @@ thead th {
   background: var(--background-alt);
   border-right: 1px solid #e0e0e0;
 }
+
+/* Remove last column right border */
 thead th:last-child {
   border-right: none;
 }
@@ -66,8 +68,15 @@ tbody td {
   font-size: 14px;
   border-right: 1px solid #e0e0e0;
 }
+
+/* Remove last column right border */
 tbody td:last-child {
-  border-right: none; /* remove last column border */
+  border-right: none;
+}
+
+/* Optional: cleaner row hover */
+tbody tr:hover {
+  background: #fafafa;
 }
 
 /* Optional: cleaner row hover */
