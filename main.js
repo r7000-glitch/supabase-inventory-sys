@@ -295,18 +295,3 @@ if(currentUser){ applyRoleRestrictions(); loadAssets(); }
 
 // --- Real-time refresh every 60 seconds ---
 setInterval(async ()=>{ if(currentUser) await loadAssets(); },60000);
-async function logUserAction(username, action, itemId = null) {
-  const { data, error } = await supabase
-    .from('user_logs')
-    .insert([{ username, action, item_id: itemId, timestamp: new Date() }]);
-
-  if (error) console.error('Error logging action:', error);
-}
-async function logUserAction(username, action, itemId = null) {
-  const { data, error } = await supabase
-    .from('user_logs')
-    .insert([{ username, action, item_id: itemId, timestamp: new Date() }]);
-
-  if (error) console.error('Error logging action:', error);
-}
-
