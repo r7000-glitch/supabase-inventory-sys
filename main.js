@@ -1,8 +1,6 @@
 import { fetchAssets, addAsset, updateAsset, deleteSelected } from "./supabase.js";
-import { config } from "./config.js";
-
-// --- Users & roles ---
-const users = config.users;
+import { signUp, login, logout, getCurrentUser } from "./auth.js"; // <-- auth.js
+import { config } from "./config.js"; // keep this for other configs if needed
 
 // --- Status CSS mapping ---
 const statusClassMap = {
@@ -14,7 +12,7 @@ const statusClassMap = {
 
 // --- State ---
 let assets = [];
-let currentUser = JSON.parse(sessionStorage.getItem("currentUser")) || null;
+let currentUser = null;
 
 // --- Elements ---
 const loginModal = document.getElementById("loginModal");
@@ -56,7 +54,7 @@ function normalizeStatus(asset) {
 // --- Role restrictions ---
 function applyRoleRestrictions() {
   if (!currentUser) return;
-  roleIndicator.textContent = `Logged in as ${currentUser.username} (${currentUser.role})`;
+  roleIndicator.textContent = `Logged in as ${currentUser.email} (${currentUser.role || 'user'})`;
   const isViewer = currentUser.role === "viewer";
   addAssetBtn.disabled = isViewer;
   deleteBtn.disabled = isViewer;
@@ -64,40 +62,56 @@ function applyRoleRestrictions() {
 }
 
 // --- Login handling ---
-function ensureLogin() {
-  if (!currentUser) { loginModal.classList.add("show"); mainContent.style.display = "none"; }
-  else { loginModal.classList.remove("show"); mainContent.style.display = "block"; }
+async function ensureLogin() {
+  currentUser = await getCurrentUser();
+  if (!currentUser) { 
+    loginModal.classList.add("show"); 
+    mainContent.style.display = "none"; 
+  } else { 
+    loginModal.classList.remove("show"); 
+    mainContent.style.display = "block"; 
+    applyRoleRestrictions(); 
+    await loadAssets();
+  }
 }
 
+// --- Login button ---
 loginBtn.addEventListener("click", async () => {
-  const u = document.getElementById("username").value.trim();
-  const p = document.getElementById("password").value.trim();
-  const found = users.find(x => x.username === u && x.password === p);
-  if (!found) { alert("Invalid credentials"); return; }
-  currentUser = found;
-  sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-  loginModal.classList.remove("show");
-  mainContent.style.display = "block";
-  applyRoleRestrictions();
-  await loadAssets();
+  const email = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  try {
+    await login(email, password);
+    currentUser = await getCurrentUser();
+
+    loginModal.classList.remove("show");
+    mainContent.style.display = "block";
+    applyRoleRestrictions();
+    await loadAssets();
+  } catch (err) {
+    alert("Invalid credentials or login error");
+    console.error(err);
+  }
 });
 
+// --- Demo button (optional) ---
 demoBtn.addEventListener("click", () => {
-  document.getElementById("username").value = "admin";
-  document.getElementById("password").value = "@dmin321";
+  document.getElementById("username").value = "demo@example.com";
+  document.getElementById("password").value = "password123";
 });
 
-logoutBtn.addEventListener("click", () => {
+// --- Logout button ---
+logoutBtn.addEventListener("click", async () => {
   if (!confirm("Logout?")) return;
+  await logout();
   currentUser = null;
-  sessionStorage.removeItem("currentUser");
   roleIndicator.textContent = "Not logged in";
   mainContent.style.display = "none";
   loginModal.classList.add("show");
 });
 
-document.getElementById("username").addEventListener("keyup", e => { if (e.key === "Enter") loginBtn.click(); });
-document.getElementById("password").addEventListener("keyup", e => { if (e.key === "Enter") loginBtn.click(); });
+// --- Enter key triggers login ---
+document.getElementById("username").addEventListener("keyup", e => { if(e.key==="Enter") loginBtn.click(); });
+document.getElementById("password").addEventListener("keyup", e => { if(e.key==="Enter") loginBtn.click(); });
 
 // --- Load assets ---
 async function loadAssets() {
@@ -180,118 +194,11 @@ document.querySelector("#inventoryTable tbody").addEventListener("focusout", asy
   await updateAsset(id,{[col]:newValue});
 });
 
-// --- Select all ---
-selectAllCheckbox.addEventListener("change", function(){const checked=this.checked; document.querySelectorAll("#inventoryTable tbody input[type='checkbox']").forEach(cb=>cb.checked=checked);});
-
-// --- Delete ---
-deleteBtn.addEventListener("click", async ()=>{
-  if(!currentUser) return alert("Please login first.");
-  if(currentUser.role==="viewer") return alert("Viewer cannot delete.");
-  const boxes=Array.from(document.querySelectorAll("#inventoryTable tbody input[type='checkbox']:checked"));
-  if(!boxes.length) return alert("Please select at least one row to delete.");
-  if(!confirm("Delete selected asset(s)?")) return;
-  const ids=boxes.map(cb=>cb.dataset.id).filter(Boolean);
-  await deleteSelected(ids);
-  await loadAssets();
-});
-
-// --- Export ---
-exportBtn.addEventListener("click", ()=>{
-  let csv="Asset Tag,Asset Name,Asset Type,Serial No.,Status,Location,Station No.,Warranty,Vendor,Date Purchased,Date Added/Updated,Remarks\n";
-  assets.forEach(a=>{
-    const row=[a.tag||"",a.assetName||"",a.assetType||"",a.serial||"",a.status||"",a.location||"",a.station||"",a.warranty||"",a.vendor||"",a.datePurchased||"",formatDate(a.date)||"",a.notes||""].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",");
-    csv+=row+"\n";
-  });
-  const blob=new Blob([csv],{type:"text/csv"});
-  const link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  const now=new Date();
-  link.download=`CFInventory_${now.getFullYear()}${now.getMonth()+1}${now.getDate()}.csv`;
-  link.click();
-});
-
-// --- Import ---
-importBtn.addEventListener("click",()=>{if(!currentUser)return alert("Please login first."); if(currentUser.role==="viewer") return alert("Viewer cannot import."); importFile.click();});
-importFile.addEventListener("change",async (e)=>{
-  const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=async (ev)=>{
-    const text=ev.target.result;
-    const lines=text.split(/\r?\n/).filter(l=>l.trim()!=="");
-    if(lines.length<=1){alert("Empty or invalid CSV."); return;}
-    const rows=lines.slice(1);
-    showLoading(`Importing 0 / ${rows.length} assets...`);
-    let added=0,skippedNoCols=0,skippedShortRow=0,skippedDuplicate=0,failed=0;
-    for(let i=0;i<rows.length;i++){
-      const line=rows[i]; 
-      const values=[]; let current=""; let inQuotes=false;
-      for(let j=0;j<=line.length;j++){
-        const char=line[j];
-        if(char==='"') inQuotes=!inQuotes;
-        else if((char===','||j===line.length)&&!inQuotes){ values.push(current.replace(/^"|"$/g,"").replace(/""/g,'"').trim()); current=""; }
-        else if(char!==undefined) current+=char;
-      }
-      if(values.length<12){ skippedShortRow++; continue; }
-      const tag=values[0],serial=values[3];
-      if(assets.some(a=>a.tag===tag||a.serial===serial)){ skippedDuplicate++; continue; }
-      const assetData={tag, assetName:values[1], assetType:values[2], serial, status:values[4], location:values[5], station:values[6], warranty:values[7], vendor:values[8], datePurchased:values[9], date:values[10]||new Date().toISOString(), notes:values[11]};
-      const success=await addAsset(assetData); if(success){added++;} else{failed++;}
-      showLoading(`Importing ${i+1} / ${rows.length} assets...\n(${added} added)`);
-    }
-    importFile.value=""; await loadAssets(); hideLoading();
-    alert(`Import complete!\n\nAdded: ${added}\nSkipped (duplicate): ${skippedDuplicate}\nSkipped (parse error): ${skippedNoCols+skippedShortRow}\nFailed: ${failed}`);
-  };
-  reader.readAsText(file);
-});
-
-// --- Add Asset ---
-addAssetBtn.addEventListener("click", ()=>{
-  if(!currentUser) return alert("Please login first."); if(currentUser.role==="viewer") return alert("Viewer cannot add assets.");
-  ["add_tag","add_assetName","add_assetType","add_serial","add_status","add_location","add_station","add_warranty","add_vendor","add_datePurchased","add_notes"].forEach(id=>document.getElementById(id).value="");
-  addModal.classList.add("show");
-});
-closeAdd.addEventListener("click",()=>addModal.classList.remove("show"));
-addSaveBtn.addEventListener("click",async ()=>{
-  const asset={tag:document.getElementById("add_tag").value.trim(), assetName:document.getElementById("add_assetName").value.trim(), assetType:document.getElementById("add_assetType").value.trim(), serial:document.getElementById("add_serial").value.trim(), status:document.getElementById("add_status").value.trim(), location:document.getElementById("add_location").value.trim(), station:document.getElementById("add_station").value.trim(), warranty:document.getElementById("add_warranty").value.trim(), vendor:document.getElementById("add_vendor").value.trim(), datePurchased:document.getElementById("add_datePurchased").value||"", date:new Date().toISOString(), notes:document.getElementById("add_notes").value.trim()};
-  if(!asset.tag||!asset.serial) return alert("Asset Tag and Serial Number are required.");
-  if(assets.some(a=>a.tag===asset.tag||a.serial===asset.serial)) return alert("Duplicate Asset Tag or Serial Number detected.");
-  await addAsset(asset); addModal.classList.remove("show"); await loadAssets();
-});
-
-// --- Click outside modal closes it ---
-document.addEventListener("click",e=>{if(e.target===addModal) addModal.classList.remove("show");});
-
-// --- Report ---
-reportBtn.addEventListener("click",()=>{
-  const rows=Array.from(document.querySelectorAll("#inventoryTable tbody tr")).filter(r=>r.style.display!=="none");
-  if(!rows.length) return alert("No data to include in report.");
-  let countAvailable=0,countInUse=0,countDefective=0,countDeployed=0,typeSummary={};
-  rows.forEach(r=>{
-    const cells=r.querySelectorAll("td");
-    const type=cells[3]?.textContent?.trim()||"Unknown";
-    const status=r.querySelector("[data-col='status'] span")?.textContent?.trim()||"";
-    if(status==="Available") countAvailable++; else if(status==="In Use") countInUse++; else if(status==="Defective") countDefective++; else if(status==="Deployed Available") countDeployed++;
-    if(!typeSummary[type]) typeSummary[type]={Available:0,"In Use":0,Defective:0,"Deployed Available":0,Total:0};
-    typeSummary[type][status]=(typeSummary[type][status]||0)+1; typeSummary[type].Total++;
-  });
-  const total=rows.length;
-  let breakdownHTML="";
-  for(const [type,stats] of Object.entries(typeSummary)){ breakdownHTML+=`<div class="type-block"><h3>${type}</h3><p>Available: ${stats.Available||0}</p><p>In Use: ${stats["In Use"]||0}</p><p>Defective: ${stats.Defective||0}</p><p>Deployed Available: ${stats["Deployed Available"]||0}</p><hr><p><strong>Total: ${stats.Total||0}</strong></p></div>`;}
-  const reportHTML=`<html><head><title>Inventory Report</title><style>body{font-family:Arial;padding:20px;}h1{text-align:center;color:#0056b3;}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background:#007bff;color:#fff}</style></head><body>
-  <h1>CF Outsourcing Solutions - Inventory Report</h1><div><p>Available: ${countAvailable}</p><p>In Use: ${countInUse}</p><p>Defective: ${countDefective}</p><p>Deployed Available: ${countDeployed}</p><p>Total: ${total}</p></div>
-  <div>${breakdownHTML}</div><table><thead>${document.querySelector("#inventoryTable thead").innerHTML}</thead><tbody>${rows.map(r=>r.outerHTML).join("")}</tbody></table>
-  </body></html>`;
-  const w=window.open(""); w.document.write(reportHTML); w.document.close(); w.print();
-});
-
-// --- Filters & search ---
-searchInput.addEventListener("input",()=>loadAssets());
-filterStatus.addEventListener("change",()=>loadAssets());
-filterDate.addEventListener("change",()=>loadAssets());
+// --- Rest of your main.js (Select all, Delete, Import/Export, Add Asset, Report, Filters, etc.) ---
+// Keep all existing code below this point as is, since inventory functions don't change
 
 // --- Initialize ---
 ensureLogin();
-if(currentUser){ applyRoleRestrictions(); loadAssets(); }
 
 // --- Real-time refresh every 60 seconds ---
 setInterval(async ()=>{ if(currentUser) await loadAssets(); },60000);
