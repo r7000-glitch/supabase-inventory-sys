@@ -1,0 +1,46 @@
+async function updateInventoryItem(itemId, newData) {
+  // Fetch old data first
+  const { data: oldData } = await supabase
+    .from('inventory')
+    .select('*')
+    .eq('id', itemId)
+    .single();
+
+  // Update the record
+  const { error } = await supabase
+    .from('inventory')
+    .update(newData)
+    .eq('id', itemId);
+
+  if (!error) {
+    // Log the update
+    await logUpdate('inventory', itemId, oldData, newData);
+  }
+}
+async function addInventoryItem(newData) {
+  const { data, error } = await supabase
+    .from('inventory')
+    .insert([newData])
+    .select();
+
+  if (!error && data.length) {
+    await logAdd('inventory', data[0].id, data[0]);
+  }
+}
+async function deleteInventoryItem(itemId) {
+  // Fetch old data first
+  const { data: oldData } = await supabase
+    .from('inventory')
+    .select('*')
+    .eq('id', itemId)
+    .single();
+
+  const { error } = await supabase
+    .from('inventory')
+    .delete()
+    .eq('id', itemId);
+
+  if (!error) {
+    await logDelete('inventory', itemId, oldData);
+  }
+}
