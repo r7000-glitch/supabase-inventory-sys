@@ -1,155 +1,162 @@
-/* --- Your existing CSS --- */
-:root {
-  --accent-teal: #007bff; /* changed from #00bfa5 to blue */
-  --accent-hover: #339cff; /* lighter blue for hover */
-  --border: #e0e0e0;
-  --border-light: #f2f2f2;
-  --text: #1c1c1e;
-  --text-light: #6e6e73;
-  --background: #ffffff;
-  --background-alt: #fafafa;
-  --radius: 10px;
-  --transition: 200ms ease;
-  --shadow: 0 2px 8px rgba(0,0,0,0.04);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color-scheme: light dark;
+/* --- Bootstrap Overrides & Custom Styles --- */
+
+/* Body background */
+body {
+  background: #f5f7fa;
+  min-height: 100vh;
 }
 
-html, body {
-  margin: 0; padding: 0;
-  background: var(--background-alt);
-  color: var(--text);
-  font-size: 15px;
-  height: 100%;
+/* Hide main content by default (shown after login) */
+#mainContent.d-none {
+  display: none !important;
 }
 
-#mainContent { display: flex; flex-direction: column; min-height: 100vh; width: 100%; padding: 24px 40px; box-sizing: border-box; background: var(--background); }
+/* Custom Login Modal (not using Bootstrap modal for login) */
+#loginModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #f8f9fa;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 
-.topbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-.topbar h1 { font-weight: 600; font-size: 20px; margin: 0; }
-#roleIndicator { font-size: 14px; color: var(--text-light); }
+#loginModal.show {
+  display: flex !important;
+}
 
-.controls { display: flex; gap: 10px; align-items: center; margin: 20px 0; flex-wrap: wrap; }
-.controls input, .controls select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); font-size: 14px; color: var(--text); }
-button { border: 1px solid var(--border); background: var(--background); color: var(--text); font-size: 14px; padding: 8px 14px; border-radius: var(--radius); cursor: pointer; }
-button:hover { background: var(--accent-teal); color: white; border-color: var(--accent-teal); }
-
-.counters { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; color: var(--text-light); font-weight: 500; }
-
-table {
+#loginModal .modal-dialog {
   width: 100%;
-  border-collapse: collapse;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden; /* ensures rounded corners apply correctly */
-  text-align: center; /* center all table content */
+  max-width: 400px;
+  margin: 1rem;
 }
 
-/* Header */
-thead th {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-light);
-  background: var(--background-alt);
-  border-right: 1px solid #e0e0e0;
+#loginModal .modal-content {
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
 }
 
-/* Remove last column right border */
-thead th:last-child {
-  border-right: none;
-}
-
-/* Body */
-tbody td {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-light);
+/* Table styling */
+#inventoryTable {
   font-size: 14px;
-  border-right: 1px solid #e0e0e0;
 }
 
-/* Remove last column right border */
-tbody td:last-child {
-  border-right: none;
+#inventoryTable thead th {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
-/* Optional: cleaner row hover */
-tbody tr:hover {
-  background: #fafafa;
+#inventoryTable tbody td {
+  vertical-align: middle;
 }
 
-/* Optional: cleaner row hover */
-tbody tr:hover {
-  background: #fafafa;
+/* Edit button column */
+.btn-edit {
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
-
-.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 999; opacity: 0; transition: opacity 250ms ease; }
-.modal.show { display: flex !important; opacity: 1; }
-.modal-content { background: var(--background); padding: 24px; border-radius: var(--radius); box-shadow: 0 6px 18px rgba(0,0,0,0.2); width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
-.modal-content h2 { margin:0; font-size:18px; text-align:center; }
-.modal-content input, .modal-content select { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
-.modal-content button { width: 100%; background: var(--accent-teal); color: white; border: none; padding: 10px; border-radius: var(--radius); }
-.modal-content button:hover { background: var(--accent-hover); }
+/* Hide edit column in print */
+@media print {
+  .edit-col {
+    display: none !important;
+  }
+}
 
 /* --- Status Badge CSS --- */
 .status {
-  padding: 4px 10px;
-  border-radius: 3px;
-  font-weight: bold;
-  font-size: 0.85em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
   color: white;
   display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.status.in-use { background-color: red; }
-.status.available { background-color: green; }
-.status.defective { background-color: gray; }
-.status.deployed { background-color: yellow; color: black; } /* yellow needs dark text */
-
+.status.in-use { background: linear-gradient(135deg, #dc3545, #c82333); }
+.status.available { background: linear-gradient(135deg, #28a745, #218838); }
+.status.defective { background: linear-gradient(135deg, #6c757d, #545b62); }
+.status.deployed { background: linear-gradient(135deg, #ffc107, #e0a800); color: #212529; }
 
 /* --- Loading Overlay --- */
 .loading-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  z-index: 99999;
 }
 
 .loading-overlay.show {
   display: flex;
 }
 
-.loading-content {
-  background: var(--background);
-  padding: 32px 48px;
-  border-radius: var(--radius);
-  text-align: center;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+/* Counter card hover effects only */
+.counter-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.loading-content p {
-  margin: 16px 0 0 0;
-  font-size: 16px;
-  color: var(--text);
+.counter-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
-.spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--border);
-  border-top-color: var(--accent-teal);
-  border-radius: 50%;
-  margin: 0 auto;
-  animation: spin 0.8s linear infinite;
+/* Button group improvements */
+.btn-group .btn {
+  font-size: 13px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .btn-group {
+    flex-wrap: wrap;
+  }
+
+  .btn-group .btn {
+    flex: 1 1 45%;
+    margin: 2px;
+    border-radius: 6px !important;
+  }
+
+  .navbar-brand {
+    font-size: 14px;
+  }
 }
 
+/* Custom scrollbar for table */
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
 
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Add Modal improvements */
+#addModal .form-label {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+/* Alert modal message - preserve line breaks */
+#alertModalMessage {
+  white-space: pre-line;
+}
