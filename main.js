@@ -296,5 +296,3 @@ if(currentUser){ applyRoleRestrictions(); loadAssets(); }
 
 // --- Real-time refresh every 60 seconds ---
 setInterval(async ()=>{ if(currentUser) await loadAssets(); },60000);
-
-import { logAdd, logUpdate, logDelete } from './user-logs.js';
