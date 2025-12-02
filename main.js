@@ -293,20 +293,5 @@ filterDate.addEventListener("change",()=>loadAssets());
 ensureLogin();
 if(currentUser){ applyRoleRestrictions(); loadAssets(); }
 
-// main.js
-import { login, redirectByRole } from './auth.js';
-
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-
-  try {
-    const user = await login(email, password);
-    console.log('Logged in user:', user);
-    redirectByRole(user);
-  } catch (error) {
-    alert('Login failed: ' + error.message);
-  }
 // --- Real-time refresh every 60 seconds ---
 setInterval(async ()=>{ if(currentUser) await loadAssets(); },60000);
