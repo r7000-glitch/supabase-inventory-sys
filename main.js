@@ -1,7 +1,5 @@
 import { fetchAssets, addAsset, updateAsset, deleteSelected } from "./supabase.js";
 import { config } from "./config.js";
-import { addLog } from "./logs.js";
-
 
 // --- Users & roles ---
 const users = config.users;
@@ -99,41 +97,34 @@ function ensureLogin() {
 }
 
 loginBtn.addEventListener("click", async () => {
-  const u = document.getElementById("username").value.trim();
-  const p = document.getElementById("password").value.trim();
-  const found = users.find(x => x.username === u && x.password === p);
-  if (!found) {
-    alert("Invalid credentials");
-    return;
-  }
-
-  currentUser = found;
-  sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-  loginModal.classList.remove("show");
-  mainContent.style.display = "block";
-  applyRoleRestrictions();
-  await loadAssets();
-
-  // Log login
-  await addLog(currentUser, "login", `User ${currentUser.username} logged in`);
+    const u = document.getElementById("username").value.trim();
+    const p = document.getElementById("password").value.trim();
+    const found = users.find(x => x.username === u && x.password === p);
+    if (!found) {
+        alert("Invalid credentials");
+        return;
+    }
+    currentUser = found;
+    sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+    loginModal.classList.remove("show");
+    mainContent.style.display = "block";
+    applyRoleRestrictions();
+    await loadAssets();
 });
-
 
 demoBtn.addEventListener("click", () => {
     document.getElementById("username").value = "admin";
     document.getElementById("password").value = "@dmin321";
 });
 
-logoutBtn.addEventListener("click", async () => {
+logoutBtn.addEventListener("click", () => {
     if (!confirm("Logout?")) return;
-    await addLog(currentUser, "logout", `User ${currentUser.username} logged out`);
     currentUser = null;
     sessionStorage.removeItem("currentUser");
     roleIndicator.textContent = "Not logged in";
     mainContent.style.display = "none";
     loginModal.classList.add("show");
 });
-
 
 document.getElementById("username").addEventListener("keyup", e => {
     if (e.key === "Enter") loginBtn.click();
@@ -250,11 +241,7 @@ document.querySelector("#inventoryTable tbody").addEventListener("focusout", asy
         return;
     }
     await updateAsset(id, { [col]: newValue });
-
-    // Log edit asset
-    await addLog(currentUser, "edit_asset", `Edited asset ID: ${id}, column: ${col}, new value: ${newValue}`);
 });
-
 
 // --- Select all ---
 selectAllCheckbox.addEventListener("change", function() {
@@ -271,13 +258,8 @@ deleteBtn.addEventListener("click", async () => {
     if (!confirm("Delete selected asset(s)?")) return;
     const ids = boxes.map(cb => cb.dataset.id).filter(Boolean);
     await deleteSelected(ids);
-
-    // Log delete asset
-    await addLog(currentUser, "delete_asset", `Deleted asset IDs: ${ids.join(",")}`);
-
     await loadAssets();
 });
-
 
 // --- Export ---
 exportBtn.addEventListener("click", () => {
@@ -373,14 +355,9 @@ addSaveBtn.addEventListener("click", async () => {
     if (!asset.tag || !asset.serial) return alert("Asset Tag and Serial Number are required.");
     if (assets.some(a => a.tag === asset.tag || a.serial === asset.serial)) return alert("Duplicate Asset Tag or Serial Number detected.");
     await addAsset(asset);
-
-    // Log add asset
-    await addLog(currentUser, "add_asset", `Added asset: ${asset.tag}`);
-
     addModal.classList.remove("show");
     await loadAssets();
 });
-
 
 // --- Click outside modal closes it ---
 document.addEventListener("click", e => { if (e.target === addModal) addModal.classList.remove("show"); });
