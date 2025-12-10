@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+        
+        const resultsDiv = document.getElementById('results');
+        
+        async function test() {
+            try {
+                // Test 1: Create client
+                const supabase = createClient(
+                    'https://iwwopytnacebtffzcnmq.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d29weXRuYWNlYnRmZnpjbm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNTY5OTUsImV4cCI6MjA3OTgzMjk5NX0.kPBBZaw-vfxBkYfYPJOIQFUU3q2vuaIAmfXlAEI-NEM'
+                );
+                resultsDiv.innerHTML += '<div class="test success">✓ Supabase client created successfully</div>';
+                
+                // Test 2: Fetch users
+                const { data, error } = await supabase.from('users').select('*');
+                
+                if (error) {
+                    resultsDiv.innerHTML += `<div class="test error">✗ Error fetching users: ${error.message}</div>`;
+                } else {
+                    resultsDiv.innerHTML += `<div class="test success">✓ Users table found! Found ${data.length} users</div>`;
+                    if (data.length > 0) {
+                        resultsDiv.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    } else {
+                        resultsDiv.innerHTML += '<div class="test error">⚠ No users found in the table</div>';
+                    }
+                }
+            } catch (err) {
+                resultsDiv.innerHTML += `<div class="test error">✗ Exception: ${err.message}</div>`;
+                console.error(err);
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>
