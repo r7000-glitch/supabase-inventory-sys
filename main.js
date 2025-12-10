@@ -1,8 +1,7 @@
-import { fetchAssets, addAsset, updateAsset, deleteSelected } from "./supabase.js";
-import { config } from "./config.js";
+import { fetchAssets, addAsset, updateAsset, deleteSelected, fetchUsers } from "./supabase.js";
 
-// --- Users & roles ---
-const users = config.users;
+// --- Users & roles (fetched from database) ---
+let users = [];
 
 // --- Status CSS mapping ---
 const statusClassMap = {
@@ -32,10 +31,19 @@ const searchInput = document.getElementById("search");
 const filterStatus = document.getElementById("filterStatus");
 const filterDate = document.getElementById("filterDate");
 const addModal = document.getElementById("addModal");
+const addModalInstance = new bootstrap.Modal(addModal);
 const closeAdd = document.getElementById("closeAdd");
+const closeAddBtn = document.getElementById("closeAddBtn");
 const addSaveBtn = document.getElementById("addSaveBtn");
 const roleIndicator = document.getElementById("roleIndicator");
 const reportBtn = document.getElementById("reportBtn");
+
+// Edit modal elements
+const editModal = document.getElementById("editModal");
+const editModalInstance = new bootstrap.Modal(editModal);
+const closeEdit = document.getElementById("closeEdit");
+const closeEditBtn = document.getElementById("closeEditBtn");
+const editSaveBtn = document.getElementById("editSaveBtn");
 
 // --- Loading overlay ---
 const loadingOverlay = document.getElementById("loadingOverlay");
@@ -50,12 +58,70 @@ function hideLoading() {
     loadingOverlay.classList.remove("show");
 }
 
+// --- Alert Modal ---
+const alertModal = document.getElementById("alertModal");
+const alertModalInstance = new bootstrap.Modal(alertModal);
+const alertModalHeader = document.getElementById("alertModalHeader");
+const alertModalIcon = document.getElementById("alertModalIcon");
+const alertModalTitleText = document.getElementById("alertModalTitleText");
+const alertModalMessage = document.getElementById("alertModalMessage");
+const alertModalOk = document.getElementById("alertModalOk");
+const alertModalCancel = document.getElementById("alertModalCancel");
+
+function showAlert(message, type = "info") {
+    const config = {
+        info: { bg: "bg-primary", icon: "bi-info-circle", title: "Notice", btnClass: "btn-primary" },
+        success: { bg: "bg-success", icon: "bi-check-circle", title: "Success", btnClass: "btn-success" },
+        warning: { bg: "bg-warning", icon: "bi-exclamation-triangle", title: "Warning", btnClass: "btn-warning" },
+        error: { bg: "bg-danger", icon: "bi-x-circle", title: "Error", btnClass: "btn-danger" }
+    };
+    const c = config[type] || config.info;
+
+    alertModalHeader.className = `modal-header ${c.bg} text-white`;
+    alertModalIcon.className = `bi ${c.icon} me-2`;
+    alertModalTitleText.textContent = c.title;
+    alertModalMessage.textContent = message;
+    alertModalOk.className = `btn ${c.btnClass}`;
+    alertModalCancel.style.display = "none";
+
+    alertModalInstance.show();
+}
+
+function showConfirm(message, onConfirm) {
+    alertModalHeader.className = "modal-header bg-warning text-dark";
+    alertModalIcon.className = "bi bi-question-circle me-2";
+    alertModalTitleText.textContent = "Confirm";
+    alertModalMessage.textContent = message;
+    alertModalOk.className = "btn btn-danger";
+    alertModalOk.textContent = "Yes";
+    alertModalCancel.style.display = "inline-block";
+
+    // Remove old listener and add new one
+    const newOkBtn = alertModalOk.cloneNode(true);
+    alertModalOk.parentNode.replaceChild(newOkBtn, alertModalOk);
+
+    newOkBtn.addEventListener("click", () => {
+        alertModalInstance.hide();
+        onConfirm();
+    }, { once: true });
+
+    alertModalInstance.show();
+}
+
+// Reset OK button text when modal closes
+alertModal.addEventListener("hidden.bs.modal", () => {
+    document.getElementById("alertModalOk").textContent = "OK";
+});
+
 // --- Helpers ---
 function formatDate(ts) {
+    if (!ts) return "";
     try {
-        return new Date(ts).toLocaleString();
+        const date = new Date(ts);
+        if (isNaN(date.getTime())) return ""; // Invalid date
+        return date.toLocaleString();
     } catch {
-        return ts || "";
+        return "";
     }
 }
 
@@ -78,7 +144,8 @@ function normalizeStatus(asset) {
 // --- Role restrictions ---
 function applyRoleRestrictions() {
     if (!currentUser) return;
-    roleIndicator.textContent = `Logged in as ${currentUser.username} (${currentUser.role})`;
+    const roleIcon = currentUser.role === "admin" ? "shield-fill" : currentUser.role === "user" ? "person-fill" : "eye-fill";
+    roleIndicator.innerHTML = `<i class="bi bi-${roleIcon} me-1"></i>${currentUser.username} (${currentUser.role})`;
     const isViewer = currentUser.role === "viewer";
     addAssetBtn.disabled = isViewer;
     deleteBtn.disabled = isViewer;
@@ -89,10 +156,10 @@ function applyRoleRestrictions() {
 function ensureLogin() {
     if (!currentUser) {
         loginModal.classList.add("show");
-        mainContent.style.display = "none";
+        mainContent.classList.add("d-none");
     } else {
         loginModal.classList.remove("show");
-        mainContent.style.display = "block";
+        mainContent.classList.remove("d-none");
     }
 }
 
@@ -101,29 +168,30 @@ loginBtn.addEventListener("click", async () => {
     const p = document.getElementById("password").value.trim();
     const found = users.find(x => x.username === u && x.password === p);
     if (!found) {
-        alert("Invalid credentials");
+        showAlert("Invalid credentials", "error");
         return;
     }
     currentUser = found;
     sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
     loginModal.classList.remove("show");
-    mainContent.style.display = "block";
+    mainContent.classList.remove("d-none");
     applyRoleRestrictions();
     await loadAssets();
 });
 
 demoBtn.addEventListener("click", () => {
     document.getElementById("username").value = "admin";
-    document.getElementById("password").value = "@dmin321";
+    document.getElementById("password").value = "@dmin2026";
 });
 
 logoutBtn.addEventListener("click", () => {
-    if (!confirm("Logout?")) return;
-    currentUser = null;
-    sessionStorage.removeItem("currentUser");
-    roleIndicator.textContent = "Not logged in";
-    mainContent.style.display = "none";
-    loginModal.classList.add("show");
+    showConfirm("Are you sure you want to logout?", () => {
+        currentUser = null;
+        sessionStorage.removeItem("currentUser");
+        roleIndicator.innerHTML = '<i class="bi bi-person-circle me-1"></i>Not logged in';
+        mainContent.classList.add("d-none");
+        loginModal.classList.add("show");
+    });
 });
 
 document.getElementById("username").addEventListener("keyup", e => {
@@ -155,15 +223,16 @@ function updateCounters() {
         else if (st === "Defective") d++;
         else if (st === "Deployed Available") p++;
     });
-    document.getElementById("countAvailable").textContent = "Available: " + a;
-    document.getElementById("countInUse").textContent = "In Use: " + u;
-    document.getElementById("countDefective").textContent = "Defective: " + d;
-    document.getElementById("countDeployed").textContent = "Deployed Available: " + p;
+    document.getElementById("countAvailable").textContent = a;
+    document.getElementById("countInUse").textContent = u;
+    document.getElementById("countDefective").textContent = d;
+    document.getElementById("countDeployed").textContent = p;
 }
 
 function renderTable() {
     const tbody = document.querySelector("#inventoryTable tbody");
     tbody.innerHTML = "";
+    const isViewer = currentUser && currentUser.role === "viewer";
 
     let list = assets.map((a, idx) => ({ a: normalizeStatus({ ...a }), idx }));
     const sf = filterStatus.value;
@@ -184,63 +253,83 @@ function renderTable() {
         tr.dataset.id = a.id;
         tr.innerHTML = `
             <td><input type="checkbox" data-index="${idx}" data-id="${a.id}"></td>
-            <td data-col="tag" class="editable">${escapeHtml(a.tag || "")}</td>
-            <td data-col="assetName" class="editable">${escapeHtml(a.assetName || "")}</td>
-            <td data-col="assetType" class="editable">${escapeHtml(a.assetType || "")}</td>
-            <td data-col="serial" class="editable">${escapeHtml(a.serial || "")}</td>
-            <td data-col="status" class="editable"><span class="status ${statusClassMap[a.status] || ''}">${escapeHtml(a.status || "")}</span></td>
-            <td data-col="location" class="editable">${escapeHtml(a.location || "")}</td>
-            <td data-col="station" class="editable">${escapeHtml(a.station || "")}</td>
-            <td data-col="warranty" class="editable">${escapeHtml(a.warranty || "")}</td>
-            <td data-col="vendor" class="editable">${escapeHtml(a.vendor || "")}</td>
-            <td data-col="datePurchased" class="editable">${escapeHtml(a.datePurchased || "")}</td>
-            <td data-col="date" class="date-cell">${escapeHtml(formatDate(a.date) || "")}</td>
-            <td data-col="notes" class="editable">${escapeHtml(a.notes || "")}</td>
+            <td data-col="tag">${escapeHtml(a.tag || "")}</td>
+            <td data-col="assetName">${escapeHtml(a.assetName || "")}</td>
+            <td data-col="assetType">${escapeHtml(a.assetType || "")}</td>
+            <td data-col="serial">${escapeHtml(a.serial || "")}</td>
+            <td data-col="status"><span class="status ${statusClassMap[a.status] || ''}">${escapeHtml(a.status || "")}</span></td>
+            <td data-col="location">${escapeHtml(a.location || "")}</td>
+            <td data-col="station">${escapeHtml(a.station || "")}</td>
+            <td data-col="warranty">${escapeHtml(a.warranty || "")}</td>
+            <td data-col="vendor">${escapeHtml(a.vendor || "")}</td>
+            <td data-col="datePurchased">${escapeHtml(a.datePurchased || "")}</td>
+            <td data-col="date">${escapeHtml(formatDate(a.date) || "")}</td>
+            <td data-col="notes">${escapeHtml(a.notes || "")}</td>
+            <td class="edit-col">
+                ${!isViewer ? `<button class="btn btn-sm btn-outline-primary btn-edit" onclick="openEditModal('${a.id}')"><i class="bi bi-pencil"></i></button>` : ''}
+            </td>
         `;
         tbody.appendChild(tr);
     });
 
-    applyEditableState();
     updateCounters();
 }
 
-// --- Inline Editing ---
-function applyEditableState() {
-    const isViewer = currentUser && currentUser.role === "viewer";
-    document.querySelectorAll("#inventoryTable tbody td.editable").forEach(td => {
-        if (isViewer) {
-            td.removeAttribute("contenteditable");
-            td.classList.remove("editable-enabled");
-        } else {
-            td.setAttribute("contenteditable", "true");
-            td.classList.add("editable-enabled");
-        }
-    });
-}
+// --- Edit Modal Functions ---
+window.openEditModal = function(id) {
+    const asset = assets.find(a => a.id === id);
+    if (!asset) return;
 
-document.querySelector("#inventoryTable tbody").addEventListener("keydown", e => {
-    if (e.key === "Enter" && e.target && e.target.matches("td[contenteditable='true']")) {
-        e.preventDefault();
-        e.target.blur();
-    }
-});
+    document.getElementById("edit_id").value = id;
+    document.getElementById("edit_tag").value = asset.tag || "";
+    document.getElementById("edit_assetName").value = asset.assetName || "";
+    document.getElementById("edit_assetType").value = asset.assetType || "";
+    document.getElementById("edit_serial").value = asset.serial || "";
+    document.getElementById("edit_status").value = asset.status || "";
+    document.getElementById("edit_location").value = asset.location || "";
+    document.getElementById("edit_station").value = asset.station || "";
+    document.getElementById("edit_warranty").value = asset.warranty || "";
+    document.getElementById("edit_vendor").value = asset.vendor || "";
+    document.getElementById("edit_datePurchased").value = asset.datePurchased || "";
+    document.getElementById("edit_notes").value = asset.notes || "";
 
-document.querySelector("#inventoryTable tbody").addEventListener("focusout", async (e) => {
-    const cell = e.target;
-    if (!cell || !cell.matches("td")) return;
-    const col = cell.dataset.col;
-    const row = cell.closest("tr");
-    if (!row) return;
-    const id = row.dataset.id;
-    if (!id) return;
-    if (!col || !["tag","assetName","assetType","serial","status","location","station","warranty","vendor","datePurchased","notes"].includes(col)) return;
-    const newValue = cell.textContent.trim();
-    if ((col === "tag" || col === "serial") && !newValue) {
-        alert("Asset Tag and Serial cannot be empty.");
-        renderTable();
+    editModalInstance.show();
+};
+
+closeEdit.addEventListener("click", () => editModalInstance.hide());
+closeEditBtn.addEventListener("click", () => editModalInstance.hide());
+
+editSaveBtn.addEventListener("click", async () => {
+    const id = document.getElementById("edit_id").value;
+    const updatedAsset = {
+        tag: document.getElementById("edit_tag").value.trim(),
+        assetName: document.getElementById("edit_assetName").value.trim(),
+        assetType: document.getElementById("edit_assetType").value.trim(),
+        serial: document.getElementById("edit_serial").value.trim(),
+        status: document.getElementById("edit_status").value.trim(),
+        location: document.getElementById("edit_location").value.trim(),
+        station: document.getElementById("edit_station").value.trim(),
+        warranty: document.getElementById("edit_warranty").value.trim(),
+        vendor: document.getElementById("edit_vendor").value.trim(),
+        datePurchased: document.getElementById("edit_datePurchased").value || "",
+        notes: document.getElementById("edit_notes").value.trim()
+    };
+
+    if (!updatedAsset.tag || !updatedAsset.serial) {
+        showAlert("Asset Tag and Serial Number are required.", "warning");
         return;
     }
-    await updateAsset(id, { [col]: newValue });
+
+    await updateAsset(id, updatedAsset);
+    editModalInstance.hide();
+
+    // Update local array instead of re-fetching
+    const idx = assets.findIndex(a => a.id === id);
+    if (idx !== -1) {
+        assets[idx] = { ...assets[idx], ...updatedAsset, date: new Date().toISOString() };
+    }
+    renderTable();
+    showAlert("Asset updated successfully!", "success");
 });
 
 // --- Select all ---
@@ -251,14 +340,17 @@ selectAllCheckbox.addEventListener("change", function() {
 
 // --- Delete ---
 deleteBtn.addEventListener("click", async () => {
-    if (!currentUser) return alert("Please login first.");
-    if (currentUser.role === "viewer") return alert("Viewer cannot delete.");
+    if (!currentUser) { showAlert("Please login first.", "warning"); return; }
+    if (currentUser.role === "viewer") { showAlert("Viewer cannot delete.", "warning"); return; }
     const boxes = Array.from(document.querySelectorAll("#inventoryTable tbody input[type='checkbox']:checked"));
-    if (!boxes.length) return alert("Please select at least one row to delete.");
-    if (!confirm("Delete selected asset(s)?")) return;
-    const ids = boxes.map(cb => cb.dataset.id).filter(Boolean);
-    await deleteSelected(ids);
-    await loadAssets();
+    if (!boxes.length) { showAlert("Please select at least one row to delete.", "info"); return; }
+
+    showConfirm("Are you sure you want to delete the selected asset(s)?", async () => {
+        const ids = boxes.map(cb => cb.dataset.id).filter(Boolean);
+        await deleteSelected(ids);
+        await loadAssets();
+        showAlert("Asset(s) deleted successfully!", "success");
+    });
 });
 
 // --- Export ---
@@ -281,8 +373,8 @@ exportBtn.addEventListener("click", () => {
 
 // --- Import ---
 importBtn.addEventListener("click", () => {
-    if (!currentUser) return alert("Please login first.");
-    if (currentUser.role === "viewer") return alert("Viewer cannot import.");
+    if (!currentUser) { showAlert("Please login first.", "warning"); return; }
+    if (currentUser.role === "viewer") { showAlert("Viewer cannot import.", "warning"); return; }
     importFile.click();
 });
 
@@ -293,7 +385,7 @@ importFile.addEventListener("change", async (e) => {
     reader.onload = async (ev) => {
         const text = ev.target.result;
         const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-        if (lines.length <= 1) { alert("Empty or invalid CSV."); return; }
+        if (lines.length <= 1) { showAlert("Empty or invalid CSV.", "error"); return; }
         const rows = lines.slice(1);
         showLoading(`Importing 0 / ${rows.length} assets...`);
         let added = 0, skippedNoCols = 0, skippedShortRow = 0, skippedDuplicate = 0, failed = 0;
@@ -321,21 +413,22 @@ importFile.addEventListener("change", async (e) => {
         importFile.value = "";
         await loadAssets();
         hideLoading();
-        alert(`Import complete!\n\nAdded: ${added}\nSkipped (duplicate): ${skippedDuplicate}\nSkipped (parse error): ${skippedNoCols+skippedShortRow}\nFailed: ${failed}`);
+        showAlert(`Import complete!\n\nAdded: ${added}\nSkipped (duplicate): ${skippedDuplicate}\nSkipped (parse error): ${skippedNoCols+skippedShortRow}\nFailed: ${failed}`, "success");
     };
     reader.readAsText(file);
 });
 
 // --- Add Asset ---
 addAssetBtn.addEventListener("click", () => {
-    if (!currentUser) return alert("Please login first.");
-    if (currentUser.role === "viewer") return alert("Viewer cannot add assets.");
+    if (!currentUser) { showAlert("Please login first.", "warning"); return; }
+    if (currentUser.role === "viewer") { showAlert("Viewer cannot add assets.", "warning"); return; }
     ["add_tag","add_assetName","add_assetType","add_serial","add_status","add_location","add_station","add_warranty","add_vendor","add_datePurchased","add_notes"]
         .forEach(id => document.getElementById(id).value = "");
-    addModal.classList.add("show");
+    addModalInstance.show();
 });
 
-closeAdd.addEventListener("click", () => addModal.classList.remove("show"));
+closeAdd.addEventListener("click", () => addModalInstance.hide());
+closeAddBtn.addEventListener("click", () => addModalInstance.hide());
 
 addSaveBtn.addEventListener("click", async () => {
     const asset = {
@@ -352,20 +445,18 @@ addSaveBtn.addEventListener("click", async () => {
         date: new Date().toISOString(),
         notes: document.getElementById("add_notes").value.trim()
     };
-    if (!asset.tag || !asset.serial) return alert("Asset Tag and Serial Number are required.");
-    if (assets.some(a => a.tag === asset.tag || a.serial === asset.serial)) return alert("Duplicate Asset Tag or Serial Number detected.");
+    if (!asset.tag || !asset.serial) { showAlert("Asset Tag and Serial Number are required.", "warning"); return; }
+    if (assets.some(a => a.tag === asset.tag || a.serial === asset.serial)) { showAlert("Duplicate Asset Tag or Serial Number detected.", "error"); return; }
     await addAsset(asset);
-    addModal.classList.remove("show");
+    addModalInstance.hide();
     await loadAssets();
+    showAlert("Asset added successfully!", "success");
 });
-
-// --- Click outside modal closes it ---
-document.addEventListener("click", e => { if (e.target === addModal) addModal.classList.remove("show"); });
 
 // --- Report ---
 reportBtn.addEventListener("click", () => {
     const rows = Array.from(document.querySelectorAll("#inventoryTable tbody tr")).filter(r => r.style.display !== "none");
-    if (!rows.length) return alert("No data to include in report.");
+    if (!rows.length) { showAlert("No data to include in report.", "info"); return; }
     let countAvailable = 0, countInUse = 0, countDefective = 0, countDeployed = 0, typeSummary = {};
     rows.forEach(r => {
         const cells = r.querySelectorAll("td");
@@ -384,16 +475,28 @@ reportBtn.addEventListener("click", () => {
     for (const [type, stats] of Object.entries(typeSummary)) {
         breakdownHTML += `<div class="type-block"><h3>${type}</h3><p>Available: ${stats.Available||0}</p><p>In Use: ${stats["In Use"]||0}</p><p>Defective: ${stats.Defective||0}</p><p>Deployed Available: ${stats["Deployed Available"]||0}</p><hr><p><strong>Total: ${stats.Total||0}</strong></p></div>`;
     }
+    // Clone thead and remove edit column
+    const theadClone = document.querySelector("#inventoryTable thead").cloneNode(true);
+    theadClone.querySelectorAll(".edit-col").forEach(el => el.remove());
+
+    // Clone rows and remove edit column
+    const rowsHtml = rows.map(r => {
+        const clone = r.cloneNode(true);
+        clone.querySelectorAll(".edit-col").forEach(el => el.remove());
+        return clone.outerHTML;
+    }).join("");
+
     const reportHTML = `
         <html><head><title>Inventory Report</title>
-        <style>body{font-family:Arial;padding:20px;}h1{text-align:center;color:#0056b3;}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background:#007bff;color:#fff}</style>
+            <style>body{font-family:Arial;padding:20px;}h1{text-align:center;color:#0056b3;}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background:#007bff;color:#fff}</style>
         </head>
-        <body>
-            <h1>CF Outsourcing Solutions - Inventory Report</h1>
-            <div><p>Available: ${countAvailable}</p><p>In Use: ${countInUse}</p><p>Defective: ${countDefective}</p><p>Deployed Available: ${countDeployed}</p><p>Total: ${total}</p></div>
-            <div>${breakdownHTML}</div>
-            <table><thead>${document.querySelector("#inventoryTable thead").innerHTML}</thead><tbody>${rows.map(r => r.outerHTML).join("")}</tbody></table>
-        </body></html>`;
+            <body>
+                <h1>CF Outsourcing Solutions - Inventory Report</h1>
+                <div><p>Available: ${countAvailable}</p><p>In Use: ${countInUse}</p><p>Defective: ${countDefective}</p><p>Deployed Available: ${countDeployed}</p><p>Total: ${total}</p></div>
+                <div>${breakdownHTML}</div>
+                <table><thead>${theadClone.innerHTML}</thead><tbody>${rowsHtml}</tbody></table>
+            </body>
+        </html>`;
     const w = window.open("");
     w.document.write(reportHTML);
     w.document.close();
@@ -406,11 +509,23 @@ filterStatus.addEventListener("change", () => loadAssets());
 filterDate.addEventListener("change", () => loadAssets());
 
 // --- Initialize ---
-ensureLogin();
-if (currentUser) {
-    applyRoleRestrictions();
-    loadAssets();
+async function init() {
+    // Load users from database
+    users = await fetchUsers();
+    // console.log("Loaded users from database:", users.length);
+
+    if (users.length === 0) {
+        console.warn("No users found in database. Please run the SQL to create users table and insert users.");
+    }
+
+    ensureLogin();
+    if (currentUser) {
+        applyRoleRestrictions();
+        loadAssets();
+    }
 }
+
+init();
 
 // --- Real-time refresh every 60 seconds ---
 setInterval(async () => { if (currentUser) await loadAssets(); }, 60000);

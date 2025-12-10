@@ -63,3 +63,13 @@ export async function deleteSelected(ids) {
   }
   return true;
 }
+
+// --- Fetch users for login ---
+export async function fetchUsers() {
+  const { data, error } = await supabase.from("users").select("*");
+  if (error) {
+    console.error("Error fetching users:", error.message);
+    return [];
+  }
+  return data;
+}

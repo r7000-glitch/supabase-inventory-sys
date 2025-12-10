@@ -1,3 +1,9 @@
+# Playground (contains credentials)
+playground.html
+playground.js
+clear-data.html
+clear-data.js
+
 # Dependencies
 node_modules/
 
