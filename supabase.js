@@ -1,9 +1,20 @@
 // supabase.js
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0/+esm";
 import { config } from "./config.js";
 
 // --- Supabase setup ---
-export const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_KEY);
+let supabase;
+try {
+  supabase = createClient(config.SUPABASE_URL, config.SUPABASE_KEY);
+  console.log("Supabase client initialized successfully");
+} catch (err) {
+  console.error("Failed to initialize Supabase client:", err);
+  // Fallback - create a dummy object to prevent crashes
+  supabase = {
+    from: () => ({ select: () => Promise.resolve({ data: [], error: { message: "Supabase not initialized" } }) })
+  };
+}
+export { supabase };
 
 // --- Fetch assets ---
 export async function fetchAssets(search = "", statusFilter = "", dateSort = "") {
@@ -68,7 +79,7 @@ export async function deleteSelected(ids) {
 export async function fetchUsers() {
   const { data, error } = await supabase.from("users").select("*");
   if (error) {
-    console.error("Error fetching users:", error.message);
+    console.error("Error fetching users:", error);
     return [];
   }
   return data;

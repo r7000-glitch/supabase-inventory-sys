@@ -1,31 +1,33 @@
 // --- Realtime.js for inventory system ---
+import { supabase } from "./supabase.js";
 
-// --- Supabase client ---
-const supabase = supabase.createClient(
-  'https://iwwopytnacebtffzcnmq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d29weXRuYWNlYnRmZnpjbm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNTY5OTUsImV4cCI6MjA3OTgzMjk5NX0.kPBBZaw-vfxBkYfYPJOIQFUU3q2vuaIAmfXlAEI-NEM'
-);
+// --- Wait for loadAssets function to be available, then set up real-time subscription ---
+function setupRealtimeSubscription() {
+  if (typeof loadAssets !== "function") {
+    // Retry in 100ms
+    setTimeout(setupRealtimeSubscription, 100);
+    return;
+  }
 
-// --- Ensure loadAssets function exists ---
-if (typeof loadAssets !== "function") {
-  console.error("loadAssets() function not found. Please make sure this script is loaded after main.js.");
+  // --- Real-time subscription ---
+  supabase
+    .channel('public:assets')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'assets' },
+      payload => {
+        console.log('Realtime update received:', payload);
+
+        // Refresh assets table
+        if (typeof loadAssets === "function") {
+          loadAssets();
+        }
+      }
+    )
+    .subscribe();
 }
 
-// --- Real-time subscription ---
-supabase
-  .channel('public:inventory')
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'inventory' },
-    payload => {
-      console.log('Realtime update received:', payload);
-
-      // Refresh assets table
-      if (typeof loadAssets === "function") {
-        loadAssets();
-      }
-    }
-  )
-  .subscribe();
+// Start checking for loadAssets
+setupRealtimeSubscription();
 
 // --- Search input is already handled in main.js via loadAssets() ---

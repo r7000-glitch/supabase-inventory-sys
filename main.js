@@ -17,6 +17,7 @@ let currentUser = JSON.parse(sessionStorage.getItem("currentUser")) || null;
 
 // --- Elements ---
 const loginModal = document.getElementById("loginModal");
+const loginModalInstance = new bootstrap.Modal(loginModal, { backdrop: "static", keyboard: false });
 const mainContent = document.getElementById("mainContent");
 const loginBtn = document.getElementById("loginBtn");
 const demoBtn = document.getElementById("demoBtn");
@@ -155,10 +156,10 @@ function applyRoleRestrictions() {
 // --- Login handling ---
 function ensureLogin() {
     if (!currentUser) {
-        loginModal.classList.add("show");
+        loginModalInstance.show();
         mainContent.classList.add("d-none");
     } else {
-        loginModal.classList.remove("show");
+        loginModalInstance.hide();
         mainContent.classList.remove("d-none");
     }
 }
@@ -173,24 +174,28 @@ loginBtn.addEventListener("click", async () => {
     }
     currentUser = found;
     sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-    loginModal.classList.remove("show");
+    loginModalInstance.hide();
     mainContent.classList.remove("d-none");
     applyRoleRestrictions();
     await loadAssets();
 });
 
 demoBtn.addEventListener("click", () => {
-    document.getElementById("username").value = "admin";
-    document.getElementById("password").value = "@dmin2026";
+    if (users.length > 0) {
+        const firstUser = users[0];
+        document.getElementById("username").value = firstUser.username;
+        document.getElementById("password").value = firstUser.password;
+    } else {
+        showAlert("No demo users available. Please set up the database first.", "warning");
+    }
 });
 
 logoutBtn.addEventListener("click", () => {
     showConfirm("Are you sure you want to logout?", () => {
         currentUser = null;
         sessionStorage.removeItem("currentUser");
-        roleIndicator.innerHTML = '<i class="bi bi-person-circle me-1"></i>Not logged in';
-        mainContent.classList.add("d-none");
-        loginModal.classList.add("show");
+        ensureLogin();
+        applyRoleRestrictions();
     });
 });
 
@@ -512,7 +517,7 @@ filterDate.addEventListener("change", () => loadAssets());
 async function init() {
     // Load users from database
     users = await fetchUsers();
-    // console.log("Loaded users from database:", users.length);
+    // console.log("Loaded users from database:", users.length, users);
 
     if (users.length === 0) {
         console.warn("No users found in database. Please run the SQL to create users table and insert users.");
