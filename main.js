@@ -162,17 +162,19 @@ function ensureLogin() {
         loginModalInstance.hide();
         mainContent.classList.remove("d-none");
     }
-}
 loginBtn.addEventListener("click", async () => {
     const u = document.getElementById("username").value.trim();
     const p = document.getElementById("password").value.trim();
     const found = users.find(x => x.username === u && x.password === p);
 
-    // Instead of invalid credentials, show success
     if (!found) {
-        showAlert("Login successful", "success"); // <-- changed here
+        // Show error message for invalid credentials
+        showAlert("Error, Invalid login credentials", "error");
         return;
     }
+
+    // Show success message for valid login
+    showAlert("Login successful", "success");
 
     currentUser = found;
     sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
