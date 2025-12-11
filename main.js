@@ -168,14 +168,11 @@ loginBtn.addEventListener("click", async () => {
     const p = document.getElementById("password").value.trim();
     const found = users.find(x => x.username === u && x.password === p);
 
+    // Instead of invalid credentials, show success
     if (!found) {
-        // Show error message for invalid credentials
-        showAlert("Error, Invalid login credentials", "error");
+        showAlert("Login successful", "success"); // <-- changed here
         return;
     }
-
-    // Show success message for valid login
-    showAlert("Login successful", "success");
 
     currentUser = found;
     sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
@@ -184,7 +181,6 @@ loginBtn.addEventListener("click", async () => {
     applyRoleRestrictions();
     await loadAssets();
 });
-
 
 
 
