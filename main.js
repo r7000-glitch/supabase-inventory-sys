@@ -164,21 +164,55 @@ function ensureLogin() {
     }
 }
 
+import { supabase } from './supabase.js'; // your Supabase client
+
+const loginBtn = document.getElementById("loginBtn");
+const loginModalInstance = new bootstrap.Modal(document.getElementById("loginModal"));
+const mainContent = document.getElementById("mainContent");
+
 loginBtn.addEventListener("click", async () => {
-    const u = document.getElementById("username").value.trim();
-    const p = document.getElementById("password").value.trim();
-    const found = users.find(x => x.username === u && x.password === p);
-    if (!found) {
-        showAlert("Invalid credentials", "error");
-        return;
-    }
-    currentUser = found;
-    sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-    loginModalInstance.hide();
-    mainContent.classList.remove("d-none");
-    applyRoleRestrictions();
-    await loadAssets();
+  const u = document.getElementById("username").value.trim();
+  const p = document.getElementById("password").value.trim();
+
+  if (!u || !p) {
+    showAlert("Please enter username and password", "error");
+    return;
+  }
+
+  // Fetch users from Supabase
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', u)
+    .limit(1);
+
+  if (error) {
+    console.error(error);
+    showAlert("Failed to fetch users", "error");
+    return;
+  }
+
+  if (!users || users.length === 0) {
+    showAlert("Invalid credentials", "error");
+    return;
+  }
+
+  const user = users[0];
+
+  // If password is plain text in DB
+  if (user.password !== p) {
+    showAlert("Invalid credentials", "error");
+    return;
+  }
+
+  // Login success
+  sessionStorage.setItem("currentUser", JSON.stringify(user));
+  loginModalInstance.hide();
+  mainContent.classList.remove("d-none");
+  applyRoleRestrictions();
+  await loadAssets();
 });
+
 
 demoBtn.addEventListener("click", () => {
     if (users.length > 0) {
