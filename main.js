@@ -168,7 +168,7 @@ loginBtn.addEventListener("click", async () => {
     const p = document.getElementById("password").value.trim();
     const found = users.find(x => x.username === u && x.password === p);
     if (!found) {
-        showAlert("Login Successfully!");
+       showAlert("Error, Invalid login credentials", "error");
         return;
     }
     currentUser = found;
