@@ -532,55 +532,5 @@ async function init() {
 
 init();
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
-
-async function fetchAssetsByType(type) {
-  const { data, error } = await supabase
-    .from('assets')
-    .select('*')
-    .eq('type', type);
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return data;
-}
-
-async function populateTable(type, tableId) {
-  const assets = await fetchAssetsByType(type);
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  tbody.innerHTML = '';
-
-  if (assets.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No assets found.</td></tr>';
-    return;
-  }
-
-  assets.forEach(asset => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${asset.asset_tag}</td>
-      <td>${asset.asset_name}</td>
-      <td>${asset.brand_model}</td>
-      <td>${asset.status}</td>
-      <td>${asset.location || '-'}</td>
-      <td>${asset.remarks || '-'}</td>
-      <td>
-        <button class="btn btn-sm btn-primary editBtn" data-id="${asset.id}"><i class="bi bi-pencil-square"></i></button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  populateTable('Desktop', 'desktopTable');
-  populateTable('Keyboard', 'keyboardTable');
-  populateTable('UPS', 'upsTable');
-});
-
-
 // --- Real-time refresh every 60 seconds ---
 setInterval(async () => { if (currentUser) await loadAssets(); }, 60000);
